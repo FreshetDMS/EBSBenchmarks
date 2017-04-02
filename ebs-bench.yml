@@ -120,4 +120,12 @@
         src: templates/bench_data.txt
         dest: "{{ bench.data_dir }}/{{ bench.id }}.txt"
 
-
+- name: Terminate EC2 instances
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Terminate instances used for benchmark
+      ec2:
+        state: 'absent'
+        instance_ids: "{{ ec2i.instance_ids }}"
