@@ -65,8 +65,10 @@
       with_items: "{{ ec2i.instances }}"
       register: known_hosts_results
       ignore_errors: yes
+    - debug: 
+        msg: "{{ known_hosts_results }}"
     - name: Scan the public key
-      shell: "ssh-keygen -H -T 10 {{ item.item.public_dns_name }} >> ~/.ssh/known_hosts "
+      shell: "ssh-keyscan -H -T 10 {{ item.item.public_dns_name }} >> ~/.ssh/known_hosts "
       with_items: "{{ known_hosts_results.results }}"
       when: item.stdout == ""
 
@@ -99,7 +101,7 @@
     - name: Copy fio scripts 
       synchronize:
         src: fio
-        dest: /home/ec2-user/fio
+        dest: /home/ec2-user
     - name: Record bench start time
       command: date
       register: start_time
