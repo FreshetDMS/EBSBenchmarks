@@ -1,0 +1,11 @@
+Start Time
+==========
+{{ start_time.stdout }}
+
+End Time
+=======
+{{ end_time.stdout }}
+
+Output
+======
+{{ bench_output.stdout }}
