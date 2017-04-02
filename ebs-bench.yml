@@ -1,0 +1,123 @@
+---
+- name: Create SSH Enabled Security Group
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Create security group
+      ec2_group:
+        name: ssh_enabled
+        description: SSH enabled security group
+        region: "{{ ec2.region }}"
+        rules:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: 0.0.0.0/0
+        rules_egress:
+          - proto: tcp
+            from_port: 0
+            to_port: 65535
+            cidr_ip: 0.0.0.0/0
+
+- name: Create EC2 instance for EBS benchmark
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Launch instance
+      ec2:
+        key_name: "{{ ec2.key }}"
+        group: ssh_enabled
+        instance_type: "{{ ec2.instance_type }}"
+        image: "{{ ec2.image }}"
+        wait: yes
+        region: "{{ ec2.region }}"
+        count: 1
+        spot_price: "{{ ec2.spot_price }}"
+        spot_wait_timeout: 600
+        monitoring: yes
+        volumes:
+          - device_name: /dev/xvdba
+            volume_type: "{{ ec2.volume_type }}"
+            volume_size: "{{ ec2.volume_size }}"
+            delete_on_termination: true
+      register: ec2i
+    - name: Add new instance to host group
+      add_host:
+        hostname: "{{ item.public_ip }}"
+        groupname: testserver
+      with_items: "{{ ec2i.instances }}"
+    - name: Wait for SSH to come up
+      wait_for:
+        host: "{{ item.public_dns_name }}"
+        port: 22
+        delay: 60
+        timeout: 360
+        state: started
+      with_items: "{{ ec2i.instances }}"
+    - name: Make sure ~/.ssh/known_hosts file exists
+      file:
+        path: ~/.ssh/known_hosts
+        state: touch
+    - name: Check hosts name availability
+      shell: "ssh-keygen -f ~/.ssh/known_hosts -F {{ item.public_dns_name }}"
+      with_items: "{{ ec2i.instances }}"
+      register: known_hosts_results
+      ignore_errors: yes
+    - name: Scan the public key
+      shell: "ssh-keygen -H -T 10 {{ item.item.public_dns_name }} >> ~/.ssh/known_hosts "
+      with_items: "{{ known_hosts_results.results }}"
+      when: item.stdout == ""
+
+- name: Configure test server and execute benchmarks
+  hosts: testserver
+  remote_user: ec2-user
+  become: true
+  become_method: sudo
+  gather_facts: yes
+  tasks:
+    - name: Make ext4 filesystem on EBS volume
+      command: mkfs -t ext4 /dev/xvdba
+    - name: Turn of journaling
+      command: tune2fs -O {{ "^" }}has_journal /dev/xvdba
+    - name: Create mount point
+      file:
+        path: /mnt/xvdba
+        state: directory
+      ignore_errors: yes
+    - name: Mount EBS volume at /mnt/xvdba
+      command: mount /dev/xvdba /mnt/xvdba
+    - name: upgrade all packages
+      yum:
+        name: '*'
+        state: latest
+    - name: Install the latest version of fio
+      yum:
+        name: fio
+        state: latest
+    - name: Copy fio scripts 
+      synchronize:
+        src: fio
+        dest: /home/ec2-user/fio
+    - name: Record bench start time
+      command: date
+      register: start_time
+    - name: Execute EBS benchmark
+      command: "fio /home/ec2-user/fio/{{ fio.bench }}"
+      register: bench_output
+    - name: Record bench end time
+      command: date
+      register: end_time
+
+- name: Save benchmark results
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Write benchmark start and end times
+      template:
+        src: templates/bench_data.txt
+        dest: "{{ bench.data_dir }}/{{ bench.id }}.txt"
+
+

@@ -1,0 +1,15 @@
+ec2:
+  key: bench-keypair
+  instance_type: m4.2xlarge
+  image: ami-f173cc91
+  region: us-west-2
+  spot_price: 0.25
+  volume_type: st1
+  volume_size: 4096
+  
+fio:
+  bench:
+
+bench:
+  data_dir:
+  id:
