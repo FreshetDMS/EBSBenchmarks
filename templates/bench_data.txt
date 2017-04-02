@@ -1,3 +1,7 @@
+Instance Data
+=============
+{{ ec2i.instances }}
+
 Start Time
 ==========
 {{ start_time.stdout }}
