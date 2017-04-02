@@ -125,6 +125,9 @@
   connection: local
   gather_facts: no
   tasks:
+    - name: Pause before terminating instances
+      pause:
+        minutes: 5
     - name: Terminate instances used for benchmark
       ec2:
         state: 'absent'
