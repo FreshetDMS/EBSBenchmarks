@@ -1,0 +1,8 @@
+; -- start job file global-include.fio --
+group_report=1
+directory=/mnt/xvdba
+rime_based
+direct=0
+ioengine=psync
+runtime=600
+; -- end job file global-include.fio --
