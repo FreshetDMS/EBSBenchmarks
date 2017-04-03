@@ -1,14 +1,14 @@
 ec2:
   key: bench-keypair
-  instance_type: m4.xlarge
+  instance_type: m4.2xlarge
   image: ami-f173cc91
   region: us-west-2
   spot_price: 0.25
-  volume_type: st1
+  volume_type: gp2
   volume_size: 4096
   
 fio:
-  bench: st1-limits.ini
+  bench: gp2-limits.ini
 
 bench:
   data_dir: /Users/mpathira/PhD/Code/FreshetDMS/EBSBenchmarks/data
